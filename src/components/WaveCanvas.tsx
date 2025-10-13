@@ -6,6 +6,7 @@ interface WaveCanvasProps {
   samplesPerBit: number;
   amplitudePx: number;
   bitLabels?: string;
+  showEye?: boolean;
   width?: number;
   height?: number;
 }
@@ -15,6 +16,7 @@ export const WaveCanvas = ({
   samplesPerBit,
   amplitudePx,
   bitLabels = '',
+  showEye = false,
   width = 1200,
   height = 400,
 }: WaveCanvasProps) => {
@@ -73,30 +75,67 @@ export const WaveCanvas = ({
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Draw waveform
+    // Draw waveform or eye diagram
     if (samples.length > 0) {
-      ctx.strokeStyle = isDark ? 'hsl(190, 95%, 50%)' : 'hsl(190, 95%, 45%)';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = isDark ? 'hsl(190, 100%, 60%)' : 'hsl(190, 95%, 50%)';
-      ctx.shadowBlur = isDark ? 8 : 4;
+      if (showEye) {
+        // Eye diagram: overlay multiple bit periods
+        const bitCount = Math.floor(samples.length / samplesPerBit);
+        if (bitCount > 1) {
+          // Display 2 bit periods on x-axis for eye diagram
+          const eyeWidth = samplesPerBit * 2;
+          const eyeScaleX = usableWidth / eyeWidth;
 
-      ctx.beginPath();
-      for (let i = 0; i < samples.length; i++) {
-        const x = padding + i * scaleX;
-        const y = centerY - samples[i] * amplitudePx;
+          ctx.strokeStyle = isDark ? 'hsl(190, 95%, 50%, 0.3)' : 'hsl(190, 95%, 45%, 0.3)';
+          ctx.lineWidth = 1.5;
 
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
+          // Overlay each bit period
+          for (let bitIdx = 0; bitIdx < bitCount - 1; bitIdx++) {
+            ctx.beginPath();
+            for (let i = 0; i < eyeWidth && (bitIdx * samplesPerBit + i) < samples.length; i++) {
+              const sampleIdx = bitIdx * samplesPerBit + i;
+              const x = padding + i * eyeScaleX;
+              const y = centerY - samples[sampleIdx] * amplitudePx;
+
+              if (i === 0) {
+                ctx.moveTo(x, y);
+              } else {
+                ctx.lineTo(x, y);
+              }
+            }
+            ctx.stroke();
+          }
+
+          // Draw eye diagram label
+          ctx.fillStyle = isDark ? 'hsl(190, 95%, 70%)' : 'hsl(190, 95%, 35%)';
+          ctx.font = 'bold 14px JetBrains Mono, monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText('Eye Diagram (2 bit periods overlaid)', width / 2, 30);
         }
+      } else {
+        // Normal waveform
+        ctx.strokeStyle = isDark ? 'hsl(190, 95%, 50%)' : 'hsl(190, 95%, 45%)';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = isDark ? 'hsl(190, 100%, 60%)' : 'hsl(190, 95%, 50%)';
+        ctx.shadowBlur = isDark ? 8 : 4;
+
+        ctx.beginPath();
+        for (let i = 0; i < samples.length; i++) {
+          const x = padding + i * scaleX;
+          const y = centerY - samples[i] * amplitudePx;
+
+          if (i === 0) {
+            ctx.moveTo(x, y);
+          } else {
+            ctx.lineTo(x, y);
+          }
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0;
       }
-      ctx.stroke();
-      ctx.shadowBlur = 0;
     }
 
-    // Draw bit labels
-    if (bitLabels) {
+    // Draw bit labels (only in normal waveform mode)
+    if (bitLabels && !showEye) {
       ctx.fillStyle = isDark ? 'hsl(210, 20%, 80%)' : 'hsl(215, 25%, 25%)';
       ctx.font = '14px JetBrains Mono, monospace';
       ctx.textAlign = 'center';
@@ -114,7 +153,7 @@ export const WaveCanvas = ({
     ctx.fillText('+1', padding - 10, centerY - amplitudePx + 5);
     ctx.fillText('0', padding - 10, centerY + 5);
     ctx.fillText('-1', padding - 10, centerY + amplitudePx + 5);
-  }, [samples, samplesPerBit, amplitudePx, bitLabels, width, height]);
+  }, [samples, samplesPerBit, amplitudePx, bitLabels, showEye, width, height]);
 
   return (
     <Card className="p-4 bg-card border-border overflow-hidden">

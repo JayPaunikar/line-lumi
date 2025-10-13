@@ -4,8 +4,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
-import { Shuffle, Download, RotateCcw, Zap } from "lucide-react";
+import { Shuffle, Download, RotateCcw } from "lucide-react";
 
 export type EncodingType = 'NRZ' | 'RZ' | 'NRZI' | 'Manchester' | 'DiffManchester' | 'AMI';
 
@@ -14,10 +15,14 @@ interface ControlsPanelProps {
   encoding: EncodingType;
   samplesPerBit: number;
   amplitude: number;
+  noiseStd: number;
+  showEye: boolean;
   onBitsChange: (bits: string) => void;
   onEncodingChange: (encoding: EncodingType) => void;
   onSamplesPerBitChange: (value: number) => void;
   onAmplitudeChange: (value: number) => void;
+  onNoiseStdChange: (value: number) => void;
+  onShowEyeChange: (value: boolean) => void;
   onRedraw: () => void;
   onRandomize: () => void;
   onDownloadPNG: () => void;
@@ -29,10 +34,14 @@ export const ControlsPanel = ({
   encoding,
   samplesPerBit,
   amplitude,
+  noiseStd,
+  showEye,
   onBitsChange,
   onEncodingChange,
   onSamplesPerBitChange,
   onAmplitudeChange,
+  onNoiseStdChange,
+  onShowEyeChange,
   onRandomize,
   onDownloadPNG,
   onReset,
@@ -154,6 +163,37 @@ export const ControlsPanel = ({
             step={0.1}
             className="w-full"
             aria-label="Signal amplitude"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between">
+            <Label htmlFor="noise-slider" className="text-sm font-medium">
+              Noise Standard Deviation
+            </Label>
+            <span className="text-sm text-muted-foreground font-mono">{noiseStd.toFixed(2)}</span>
+          </div>
+          <Slider
+            id="noise-slider"
+            value={[noiseStd]}
+            onValueChange={(vals: number[]) => onNoiseStdChange(vals[0])}
+            min={0}
+            max={0.5}
+            step={0.01}
+            className="w-full"
+            aria-label="Noise standard deviation"
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <Label htmlFor="eye-switch" className="text-sm font-medium">
+            Show Eye Diagram
+          </Label>
+          <Switch
+            id="eye-switch"
+            checked={showEye}
+            onCheckedChange={onShowEyeChange}
+            aria-label="Toggle eye diagram view"
           />
         </div>
       </div>

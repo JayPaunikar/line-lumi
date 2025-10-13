@@ -6,6 +6,7 @@ import { ExplanationPanel } from '@/components/ExplanationPanel';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { encode } from '@/utils/encoders';
 import { decode, findErrors } from '@/utils/decoders';
+import { addAwgn } from '@/utils/noise';
 import { toast } from '@/hooks/use-toast';
 import { Activity } from 'lucide-react';
 
@@ -14,6 +15,8 @@ const Index = () => {
   const [encoding, setEncoding] = useState<EncodingType>('NRZ');
   const [samplesPerBit, setSamplesPerBit] = useState(40);
   const [amplitude, setAmplitude] = useState(1.0);
+  const [noiseStd, setNoiseStd] = useState(0);
+  const [showEye, setShowEye] = useState(false);
   const [samples, setSamples] = useState<number[]>([]);
   const [decodedBits, setDecodedBits] = useState('');
   const [errors, setErrors] = useState<number[]>([]);
@@ -29,15 +32,19 @@ const Index = () => {
     if (bits.length > 0) {
       handleEncode();
     }
-  }, [bits, encoding, samplesPerBit, amplitude]);
+  }, [bits, encoding, samplesPerBit, amplitude, noiseStd]);
 
   const handleEncode = () => {
     try {
-      const newSamples = encode(bits, encoding, samplesPerBit, amplitude);
-      setSamples(newSamples);
+      // Encode clean samples
+      const cleanSamples = encode(bits, encoding, samplesPerBit, amplitude);
       
-      // Auto-decode
-      const decoded = decode(newSamples, encoding, samplesPerBit);
+      // Add noise if noiseStd > 0
+      const noisySamples = addAwgn(cleanSamples, noiseStd);
+      setSamples(noisySamples);
+      
+      // Auto-decode using noisy samples
+      const decoded = decode(noisySamples, encoding, samplesPerBit);
       setDecodedBits(decoded);
       
       // Find errors
@@ -105,6 +112,8 @@ const Index = () => {
     setEncoding('NRZ');
     setSamplesPerBit(40);
     setAmplitude(1.0);
+    setNoiseStd(0);
+    setShowEye(false);
     toast({
       title: "Reset complete",
       description: "All settings restored to defaults",
@@ -139,10 +148,14 @@ const Index = () => {
               encoding={encoding}
               samplesPerBit={samplesPerBit}
               amplitude={amplitude}
+              noiseStd={noiseStd}
+              showEye={showEye}
               onBitsChange={setBits}
               onEncodingChange={setEncoding}
               onSamplesPerBitChange={setSamplesPerBit}
               onAmplitudeChange={setAmplitude}
+              onNoiseStdChange={setNoiseStd}
+              onShowEyeChange={setShowEye}
               onRedraw={handleEncode}
               onRandomize={handleRandomize}
               onDownloadPNG={handleDownloadPNG}
@@ -155,12 +168,15 @@ const Index = () => {
           {/* Right Column: Visualization & Decode */}
           <div className="lg:col-span-2 space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Waveform Visualization</h2>
+              <h2 className="text-xl font-semibold mb-4">
+                {showEye ? 'Eye Diagram View' : 'Waveform Visualization'}
+              </h2>
               <WaveCanvas
                 samples={samples}
                 samplesPerBit={samplesPerBit}
                 amplitudePx={80}
                 bitLabels={bits}
+                showEye={showEye}
                 width={1200}
                 height={400}
               />
