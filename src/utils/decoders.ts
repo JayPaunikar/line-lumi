@@ -5,27 +5,29 @@ function getSampleValue(samples: number[], index: number): number {
   return samples[index];
 }
 
-export function decodeNRZ(samples: number[], samplesPerBit: number): string {
+export function decodeNRZ(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   let bits = '';
+  const threshold = 0; // Midpoint between +amplitude and -amplitude
   for (let i = 0; i < samples.length; i += samplesPerBit) {
     const midPoint = i + Math.floor(samplesPerBit / 2);
     const value = getSampleValue(samples, midPoint);
-    bits += value > 0 ? '1' : '0';
+    bits += value > threshold ? '1' : '0';
   }
   return bits;
 }
 
-export function decodeRZ(samples: number[], samplesPerBit: number): string {
+export function decodeRZ(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   let bits = '';
+  const threshold = 0; // Midpoint between +amplitude and -amplitude
   for (let i = 0; i < samples.length; i += samplesPerBit) {
     const quarterPoint = i + Math.floor(samplesPerBit / 4);
     const value = getSampleValue(samples, quarterPoint);
-    bits += value > 0 ? '1' : '0';
+    bits += value > threshold ? '1' : '0';
   }
   return bits;
 }
 
-export function decodeNRZI(samples: number[], samplesPerBit: number): string {
+export function decodeNRZI(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   if (samples.length === 0) return '';
 
   let bits = '';
@@ -50,8 +52,9 @@ export function decodeNRZI(samples: number[], samplesPerBit: number): string {
 }
 
 
-export function decodeManchester(samples: number[], samplesPerBit: number): string {
+export function decodeManchester(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   let bits = '';
+  const threshold = 0; // Midpoint between +amplitude and -amplitude
   for (let i = 0; i < samples.length; i += samplesPerBit) {
     const firstQuarter = i + Math.floor(samplesPerBit / 4);
     const thirdQuarter = i + Math.floor(3 * samplesPerBit / 4);
@@ -60,7 +63,7 @@ export function decodeManchester(samples: number[], samplesPerBit: number): stri
     const secondValue = getSampleValue(samples, thirdQuarter);
     
     // Low to high = 1, high to low = 0
-    if (firstValue < 0 && secondValue > 0) {
+    if (firstValue < threshold && secondValue > threshold) {
       bits += '1';
     } else {
       bits += '0';
@@ -69,7 +72,7 @@ export function decodeManchester(samples: number[], samplesPerBit: number): stri
   return bits;
 }
 
-export function decodeDiffManchester(samples: number[], samplesPerBit: number): string {
+export function decodeDiffManchester(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   if (samples.length === 0) return '';
 
   let bits = '';
@@ -92,36 +95,37 @@ export function decodeDiffManchester(samples: number[], samplesPerBit: number): 
   return bits;
 }
 
-export function decodeAMI(samples: number[], samplesPerBit: number): string {
+export function decodeAMI(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
   let bits = '';
+  const ampThreshold = Math.abs(amplitude) * 0.5; // amplitude-based threshold
   for (let i = 0; i < samples.length; i += samplesPerBit) {
     const midPoint = i + Math.floor(samplesPerBit / 2);
     const value = getSampleValue(samples, midPoint);
     
-    // Zero voltage = 0, any polarity = 1
-    bits += Math.abs(value) > 0.1 ? '1' : '0';
+    // Zero voltage = 0, any polarity above threshold = 1
+    bits += Math.abs(value) > ampThreshold ? '1' : '0';
   }
   return bits;
 }
 
-export function decode(samples: number[], encoding: EncodingType, samplesPerBit: number): string {
+export function decode(samples: number[], encoding: EncodingType, samplesPerBit: number, amplitude: number = 1): string {
   if (samples.length === 0) return '';
   
   switch (encoding) {
     case 'NRZ':
-      return decodeNRZ(samples, samplesPerBit);
+      return decodeNRZ(samples, samplesPerBit, amplitude);
     case 'RZ':
-      return decodeRZ(samples, samplesPerBit);
+      return decodeRZ(samples, samplesPerBit, amplitude);
     case 'NRZI':
-      return decodeNRZI(samples, samplesPerBit);
+      return decodeNRZI(samples, samplesPerBit, amplitude);
     case 'Manchester':
-      return decodeManchester(samples, samplesPerBit);
+      return decodeManchester(samples, samplesPerBit, amplitude);
     case 'DiffManchester':
-      return decodeDiffManchester(samples, samplesPerBit);
+      return decodeDiffManchester(samples, samplesPerBit, amplitude);
     case 'AMI':
-      return decodeAMI(samples, samplesPerBit);
+      return decodeAMI(samples, samplesPerBit, amplitude);
     default:
-      return decodeNRZ(samples, samplesPerBit);
+      return decodeNRZ(samples, samplesPerBit, amplitude);
   }
 }
 

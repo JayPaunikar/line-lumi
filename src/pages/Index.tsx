@@ -39,12 +39,19 @@ const Index = () => {
       // Encode clean samples
       const cleanSamples = encode(bits, encoding, samplesPerBit, amplitude);
       
-      // Add noise if noiseStd > 0
-      const noisySamples = addAwgn(cleanSamples, noiseStd);
+      // Add noise if noiseStd > 0 (noise as ratio of amplitude)
+      const effectiveNoiseStd = noiseStd * amplitude;
+      const noisySamples = addAwgn(cleanSamples, effectiveNoiseStd);
       setSamples(noisySamples);
       
+      // Log SNR for visibility
+      const signalPower = amplitude * amplitude;
+      const noisePower = Math.max(effectiveNoiseStd * effectiveNoiseStd, 1e-12);
+      const snrDb = 10 * Math.log10(signalPower / noisePower);
+      console.log(`[SNR] ${snrDb.toFixed(2)} dB (noiseLevel=${noiseStd.toFixed(2)}, amplitude=${amplitude.toFixed(2)})`);
+      
       // Auto-decode using noisy samples
-      const decoded = decode(noisySamples, encoding, samplesPerBit);
+      const decoded = decode(noisySamples, encoding, samplesPerBit, amplitude);
       setDecodedBits(decoded);
       
       // Find errors
@@ -120,6 +127,42 @@ const Index = () => {
     });
   };
 
+  const handleBerTest = () => {
+    try {
+      const trials = 20;
+      const length = Math.max(16, bits.length || 32);
+      let totalBits = 0;
+      let totalErrors = 0;
+      const effectiveNoiseStd = noiseStd * amplitude;
+
+      for (let t = 0; t < trials; t++) {
+        const randBits = Array.from({ length }, () => (Math.random() > 0.5 ? '1' : '0')).join('');
+        const clean = encode(randBits, encoding, samplesPerBit, amplitude);
+        const noisy = addAwgn(clean, effectiveNoiseStd);
+        const dec = decode(noisy, encoding, samplesPerBit, amplitude);
+        totalErrors += findErrors(randBits, dec).length;
+        totalBits += randBits.length;
+      }
+
+      const ber = totalErrors / totalBits;
+      const signalPower = amplitude * amplitude;
+      const noisePower = Math.max(effectiveNoiseStd * effectiveNoiseStd, 1e-12);
+      const snrDb = 10 * Math.log10(signalPower / noisePower);
+
+      console.log(`[BER Test] trials=${trials}, bits=${totalBits}, errors=${totalErrors}, BER=${ber.toFixed(4)}, SNR=${snrDb.toFixed(2)} dB`);
+      toast({
+        title: "BER Test",
+        description: `BER=${ber.toFixed(4)} at SNR=${snrDb.toFixed(2)} dB (noise=${noiseStd.toFixed(2)}×amp)`
+      });
+    } catch (error) {
+      toast({
+        title: "BER Test failed",
+        description: "An error occurred while running BER test",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -160,6 +203,7 @@ const Index = () => {
               onRandomize={handleRandomize}
               onDownloadPNG={handleDownloadPNG}
               onReset={handleReset}
+              onBerTest={handleBerTest}
             />
             
             <ExplanationPanel encoding={encoding} />

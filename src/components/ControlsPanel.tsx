@@ -27,6 +27,7 @@ interface ControlsPanelProps {
   onRandomize: () => void;
   onDownloadPNG: () => void;
   onReset: () => void;
+  onBerTest: () => void;
 }
 
 export const ControlsPanel = ({
@@ -45,6 +46,7 @@ export const ControlsPanel = ({
   onRandomize,
   onDownloadPNG,
   onReset,
+  onBerTest,
 }: ControlsPanelProps) => {
   const handleBitsInput = (value: string) => {
     // Only allow 0s and 1s
@@ -169,7 +171,7 @@ export const ControlsPanel = ({
         <div className="space-y-2">
           <div className="flex justify-between">
             <Label htmlFor="noise-slider" className="text-sm font-medium">
-              Noise Standard Deviation
+              Noise Level (σ / amplitude)
             </Label>
             <span className="text-sm text-muted-foreground font-mono">{noiseStd.toFixed(2)}</span>
           </div>
@@ -178,10 +180,10 @@ export const ControlsPanel = ({
             value={[noiseStd]}
             onValueChange={(vals: number[]) => onNoiseStdChange(vals[0])}
             min={0}
-            max={0.5}
+            max={1}
             step={0.01}
             className="w-full"
-            aria-label="Noise standard deviation"
+            aria-label="Noise level (ratio)"
           />
         </div>
 
@@ -199,6 +201,12 @@ export const ControlsPanel = ({
       </div>
 
       <div className="flex gap-2 pt-4 border-t border-border">
+        <Button
+          onClick={onBerTest}
+          variant="secondary"
+        >
+          BER Test
+        </Button>
         <Button
           onClick={onDownloadPNG}
           className="flex-1"
