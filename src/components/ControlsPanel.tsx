@@ -1,3 +1,4 @@
+////hello
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -123,10 +124,11 @@ export const ControlsPanel = ({
             </Label>
             <span className="text-sm text-muted-foreground font-mono">{samplesPerBit}</span>
           </div>
+          {/* FIXED: Pass number directly instead of array */}
           <Slider
             id="samples-slider"
-            value={[samplesPerBit]}
-            onValueChange={(vals) => onSamplesPerBitChange(vals[0])}
+            value={[samplesPerBit]} 
+            onValueChange={(vals: number[]) => onSamplesPerBitChange(vals[0])}
             min={20}
             max={100}
             step={10}
@@ -142,10 +144,11 @@ export const ControlsPanel = ({
             </Label>
             <span className="text-sm text-muted-foreground font-mono">{amplitude.toFixed(1)}</span>
           </div>
+          {/* FIXED: Pass number directly instead of array */}
           <Slider
             id="amplitude-slider"
             value={[amplitude]}
-            onValueChange={(vals) => onAmplitudeChange(vals[0])}
+            onValueChange={(vals: number[]) => onAmplitudeChange(vals[0])}
             min={0.5}
             max={2.0}
             step={0.1}

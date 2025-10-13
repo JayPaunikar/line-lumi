@@ -26,23 +26,29 @@ export function decodeRZ(samples: number[], samplesPerBit: number): string {
 }
 
 export function decodeNRZI(samples: number[], samplesPerBit: number): string {
+  if (samples.length === 0) return '';
+
   let bits = '';
-  let previousLevel = getSampleValue(samples, Math.floor(samplesPerBit / 2));
-  
-  for (let i = samplesPerBit; i < samples.length; i += samplesPerBit) {
+  let previousLevel = getSampleValue(samples, 0); // start with first sample
+
+  for (let i = 0; i < samples.length; i += samplesPerBit) {
     const midPoint = i + Math.floor(samplesPerBit / 2);
     const currentLevel = getSampleValue(samples, midPoint);
-    
-    // Transition means 1, no transition means 0
-    if (Math.sign(currentLevel) !== Math.sign(previousLevel)) {
-      bits += '1';
-    } else {
+
+    if (i === 0) {
+      // First bit: convention depends on initial level, assume '0'
       bits += '0';
+    } else {
+      // Transition = 1, no transition = 0
+      bits += Math.sign(currentLevel) !== Math.sign(previousLevel) ? '1' : '0';
     }
+
     previousLevel = currentLevel;
   }
+
   return bits;
 }
+
 
 export function decodeManchester(samples: number[], samplesPerBit: number): string {
   let bits = '';
@@ -64,20 +70,25 @@ export function decodeManchester(samples: number[], samplesPerBit: number): stri
 }
 
 export function decodeDiffManchester(samples: number[], samplesPerBit: number): string {
+  if (samples.length === 0) return '';
+
   let bits = '';
-  let previousStart = getSampleValue(samples, 0);
-  
-  for (let i = samplesPerBit; i < samples.length; i += samplesPerBit) {
-    const currentStart = getSampleValue(samples, i);
-    
-    // Transition at start = 0, no transition = 1
-    if (Math.sign(currentStart) !== Math.sign(previousStart)) {
-      bits += '0';
-    } else {
-      bits += '1';
-    }
-    previousStart = currentStart;
+  const half = Math.floor(samplesPerBit / 2);
+
+  // Initial previous mid-bit sample
+  let previousMid = getSampleValue(samples, half / 2);
+
+  for (let i = 0; i < samples.length; i += samplesPerBit) {
+    const startSample = getSampleValue(samples, i);
+    const midSample = getSampleValue(samples, i + half);
+
+    // 0 bit: transition at start (start != previous mid)
+    // 1 bit: no transition at start
+    bits += Math.sign(startSample) !== Math.sign(previousMid) ? '0' : '1';
+
+    previousMid = midSample; // update previous mid-bit for next bit
   }
+
   return bits;
 }
 
