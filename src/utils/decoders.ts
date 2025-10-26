@@ -108,6 +108,79 @@ export function decodeAMI(samples: number[], samplesPerBit: number, amplitude: n
   return bits;
 }
 
+export function decodeB8ZS(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
+  // B8ZS decoding: detect 000VB0VB pattern and convert back to 00000000
+  let bits = '';
+  const ampThreshold = Math.abs(amplitude) * 0.5;
+  
+  let i = 0;
+  while (i < samples.length) {
+    // Check if we have at least 8 more bits to check for B8ZS pattern
+    if (i <= samples.length - 8 * samplesPerBit) {
+      const bit0 = Math.abs(getSampleValue(samples, i + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit1 = Math.abs(getSampleValue(samples, i + samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit2 = Math.abs(getSampleValue(samples, i + 2 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit3 = Math.abs(getSampleValue(samples, i + 3 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit4 = Math.abs(getSampleValue(samples, i + 4 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit5 = Math.abs(getSampleValue(samples, i + 5 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit6 = Math.abs(getSampleValue(samples, i + 6 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit7 = Math.abs(getSampleValue(samples, i + 7 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      
+      // Pattern: 000VB0VB (0,0,0,pulse,pulse,0,pulse,pulse)
+      if (!bit0 && !bit1 && !bit2 && bit3 && bit4 && !bit5 && bit6 && bit7) {
+        bits += '00000000';
+        i += 8 * samplesPerBit;
+        continue;
+      }
+    }
+    
+    // Normal AMI decoding
+    const value = getSampleValue(samples, i + Math.floor(samplesPerBit / 2));
+    bits += Math.abs(value) > ampThreshold ? '1' : '0';
+    i += samplesPerBit;
+  }
+  
+  return bits;
+}
+
+export function decodeHDB3(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
+  // HDB3 decoding: detect B00V or 000V patterns and convert back to 0000
+  let bits = '';
+  const ampThreshold = Math.abs(amplitude) * 0.5;
+  
+  let i = 0;
+  while (i < samples.length) {
+    // Check if we have at least 4 more bits
+    if (i <= samples.length - 4 * samplesPerBit) {
+      const bit0 = Math.abs(getSampleValue(samples, i + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit1 = Math.abs(getSampleValue(samples, i + samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit2 = Math.abs(getSampleValue(samples, i + 2 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const bit3 = Math.abs(getSampleValue(samples, i + 3 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      
+      // Pattern B00V: (pulse,0,0,pulse)
+      if (bit0 && !bit1 && !bit2 && bit3) {
+        bits += '0000';
+        i += 4 * samplesPerBit;
+        continue;
+      }
+      
+      // Pattern 000V: (0,0,0,pulse)
+      if (!bit0 && !bit1 && !bit2 && bit3) {
+        bits += '0000';
+        i += 4 * samplesPerBit;
+        continue;
+      }
+    }
+    
+    // Normal AMI decoding
+    const value = getSampleValue(samples, i + Math.floor(samplesPerBit / 2));
+    bits += Math.abs(value) > ampThreshold ? '1' : '0';
+    i += samplesPerBit;
+  }
+  
+  return bits;
+}
+
 export function decode(samples: number[], encoding: EncodingType, samplesPerBit: number, amplitude: number = 1): string {
   if (samples.length === 0) return '';
   
@@ -124,6 +197,10 @@ export function decode(samples: number[], encoding: EncodingType, samplesPerBit:
       return decodeDiffManchester(samples, samplesPerBit, amplitude);
     case 'AMI':
       return decodeAMI(samples, samplesPerBit, amplitude);
+    case 'B8ZS':
+      return decodeB8ZS(samples, samplesPerBit, amplitude);
+    case 'HDB3':
+      return decodeHDB3(samples, samplesPerBit, amplitude);
     default:
       return decodeNRZ(samples, samplesPerBit, amplitude);
   }

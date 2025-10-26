@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Card } from "@/components/ui/card";
 import { Shuffle, Download, RotateCcw } from "lucide-react";
 
-export type EncodingType = 'NRZ' | 'RZ' | 'NRZI' | 'Manchester' | 'DiffManchester' | 'AMI';
+export type EncodingType = 'NRZ' | 'RZ' | 'NRZI' | 'Manchester' | 'DiffManchester' | 'AMI' | 'B8ZS' | 'HDB3';
 
 interface ControlsPanelProps {
   bits: string;
@@ -17,12 +17,16 @@ interface ControlsPanelProps {
   amplitude: number;
   noiseStd: number;
   showEye: boolean;
+  comparisonMode: boolean;
+  encoding2?: EncodingType;
   onBitsChange: (bits: string) => void;
   onEncodingChange: (encoding: EncodingType) => void;
   onSamplesPerBitChange: (value: number) => void;
   onAmplitudeChange: (value: number) => void;
   onNoiseStdChange: (value: number) => void;
   onShowEyeChange: (value: boolean) => void;
+  onComparisonModeChange: (value: boolean) => void;
+  onEncoding2Change?: (encoding: EncodingType) => void;
   onRedraw: () => void;
   onRandomize: () => void;
   onDownloadPNG: () => void;
@@ -37,12 +41,16 @@ export const ControlsPanel = ({
   amplitude,
   noiseStd,
   showEye,
+  comparisonMode,
+  encoding2,
   onBitsChange,
   onEncodingChange,
   onSamplesPerBitChange,
   onAmplitudeChange,
   onNoiseStdChange,
   onShowEyeChange,
+  onComparisonModeChange,
+  onEncoding2Change,
   onRandomize,
   onDownloadPNG,
   onReset,
@@ -110,7 +118,7 @@ export const ControlsPanel = ({
 
       <div className="space-y-2">
         <Label htmlFor="encoding-select" className="text-sm font-medium">
-          Encoding Scheme
+          {comparisonMode ? "Encoding Scheme 1" : "Encoding Scheme"}
         </Label>
         <Select value={encoding} onValueChange={(val) => onEncodingChange(val as EncodingType)}>
           <SelectTrigger id="encoding-select" className="bg-background">
@@ -123,9 +131,34 @@ export const ControlsPanel = ({
             <SelectItem value="Manchester">Manchester</SelectItem>
             <SelectItem value="DiffManchester">Differential Manchester</SelectItem>
             <SelectItem value="AMI">AMI (Alternate Mark Inversion)</SelectItem>
+            <SelectItem value="B8ZS">B8ZS (Bipolar with 8-Zero Substitution)</SelectItem>
+            <SelectItem value="HDB3">HDB3 (High-Density Bipolar-3)</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {comparisonMode && (
+        <div className="space-y-2">
+          <Label htmlFor="encoding-select-2" className="text-sm font-medium">
+            Encoding Scheme 2
+          </Label>
+          <Select value={encoding2 || 'Manchester'} onValueChange={(val) => onEncoding2Change?.(val as EncodingType)}>
+            <SelectTrigger id="encoding-select-2" className="bg-background">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="NRZ">NRZ (Non-Return to Zero)</SelectItem>
+              <SelectItem value="RZ">RZ (Return to Zero)</SelectItem>
+              <SelectItem value="NRZI">NRZI (Non-Return to Zero Inverted)</SelectItem>
+              <SelectItem value="Manchester">Manchester</SelectItem>
+              <SelectItem value="DiffManchester">Differential Manchester</SelectItem>
+              <SelectItem value="AMI">AMI (Alternate Mark Inversion)</SelectItem>
+              <SelectItem value="B8ZS">B8ZS (Bipolar with 8-Zero Substitution)</SelectItem>
+              <SelectItem value="HDB3">HDB3 (High-Density Bipolar-3)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -196,6 +229,19 @@ export const ControlsPanel = ({
             checked={showEye}
             onCheckedChange={onShowEyeChange}
             aria-label="Toggle eye diagram view"
+            disabled={comparisonMode}
+          />
+        </div>
+
+        <div className="flex items-center justify-between pt-2">
+          <Label htmlFor="comparison-switch" className="text-sm font-medium">
+            Comparison Mode
+          </Label>
+          <Switch
+            id="comparison-switch"
+            checked={comparisonMode}
+            onCheckedChange={onComparisonModeChange}
+            aria-label="Toggle comparison mode"
           />
         </div>
       </div>

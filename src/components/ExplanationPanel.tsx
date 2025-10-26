@@ -79,6 +79,30 @@ Bit:  1    0    1    1    0
   -V  │    │    │         │
     `,
   },
+  B8ZS: {
+    title: "B8ZS (Bipolar with 8-Zero Substitution)",
+    description: "An enhancement of AMI encoding. When 8 consecutive zeros occur, they are replaced with the pattern 000VB0VB (V=violation, B=bipolar). This ensures sufficient transitions for clock recovery on long-distance T1 lines while maintaining DC balance.",
+    diagram: `
+Bit:  1  0  0  0  0  0  0  0  0
+      ┌──┐ 0  0  0 ┌V ┐B┐ 0 ┌V ┐B┐
+  +V  │  │         │  │  │   │  │  │
+  ────┤  ├─────────┤  └──┘───┤  └──┘
+      │  │    ┌────┘         │
+  -V  │  │    │              │
+    `,
+  },
+  HDB3: {
+    title: "HDB3 (High-Density Bipolar-3 Zeros)",
+    description: "Similar to B8ZS but replaces four consecutive zeros. Uses 000V or B00V patterns based on polarity tracking. Widely used in E1 lines (European standard). Ensures no more than 3 consecutive zeros, improving clock recovery.",
+    diagram: `
+Bit:  1  0  0  0  0  1
+      ┌──┐B  0  0 ┌V┐┌──┐
+  +V  │  │         │ ││  │
+  ────┤  └─────────┤ │┤  ├──
+      │       ┌────┘ ││  │
+  -V  │       │      ││  │
+    `,
+  },
 };
 
 export const ExplanationPanel = ({ encoding }: ExplanationPanelProps) => {

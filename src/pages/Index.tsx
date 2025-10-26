@@ -17,7 +17,10 @@ const Index = () => {
   const [amplitude, setAmplitude] = useState(1.0);
   const [noiseStd, setNoiseStd] = useState(0);
   const [showEye, setShowEye] = useState(false);
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [encoding2, setEncoding2] = useState<EncodingType>('Manchester');
   const [samples, setSamples] = useState<number[]>([]);
+  const [samples2, setSamples2] = useState<number[]>([]);
   const [decodedBits, setDecodedBits] = useState('');
   const [errors, setErrors] = useState<number[]>([]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,11 +35,11 @@ const Index = () => {
     if (bits.length > 0) {
       handleEncode();
     }
-  }, [bits, encoding, samplesPerBit, amplitude, noiseStd]);
+  }, [bits, encoding, encoding2, samplesPerBit, amplitude, noiseStd, comparisonMode]);
 
   const handleEncode = () => {
     try {
-      // Encode clean samples
+      // Encode clean samples for primary encoding
       const cleanSamples = encode(bits, encoding, samplesPerBit, amplitude);
       
       // Add noise if noiseStd > 0 (noise as ratio of amplitude)
@@ -44,13 +47,20 @@ const Index = () => {
       const noisySamples = addAwgn(cleanSamples, effectiveNoiseStd);
       setSamples(noisySamples);
       
+      // If comparison mode, encode with second encoding
+      if (comparisonMode) {
+        const cleanSamples2 = encode(bits, encoding2, samplesPerBit, amplitude);
+        const noisySamples2 = addAwgn(cleanSamples2, effectiveNoiseStd);
+        setSamples2(noisySamples2);
+      }
+      
       // Log SNR for visibility
       const signalPower = amplitude * amplitude;
       const noisePower = Math.max(effectiveNoiseStd * effectiveNoiseStd, 1e-12);
       const snrDb = 10 * Math.log10(signalPower / noisePower);
       console.log(`[SNR] ${snrDb.toFixed(2)} dB (noiseLevel=${noiseStd.toFixed(2)}, amplitude=${amplitude.toFixed(2)})`);
       
-      // Auto-decode using noisy samples
+      // Auto-decode using noisy samples (only primary encoding)
       const decoded = decode(noisySamples, encoding, samplesPerBit, amplitude);
       setDecodedBits(decoded);
       
@@ -61,7 +71,9 @@ const Index = () => {
       if (foundErrors.length === 0 && decoded.length > 0) {
         toast({
           title: "Encoding successful",
-          description: `${bits.length} bits encoded using ${encoding}`,
+          description: comparisonMode 
+            ? `${bits.length} bits encoded using ${encoding} and ${encoding2}`
+            : `${bits.length} bits encoded using ${encoding}`,
         });
       }
     } catch (error) {
@@ -117,10 +129,12 @@ const Index = () => {
   const handleReset = () => {
     setBits('10110011');
     setEncoding('NRZ');
+    setEncoding2('Manchester');
     setSamplesPerBit(40);
     setAmplitude(1.0);
     setNoiseStd(0);
     setShowEye(false);
+    setComparisonMode(false);
     toast({
       title: "Reset complete",
       description: "All settings restored to defaults",
@@ -193,12 +207,16 @@ const Index = () => {
               amplitude={amplitude}
               noiseStd={noiseStd}
               showEye={showEye}
+              comparisonMode={comparisonMode}
+              encoding2={encoding2}
               onBitsChange={setBits}
               onEncodingChange={setEncoding}
               onSamplesPerBitChange={setSamplesPerBit}
               onAmplitudeChange={setAmplitude}
               onNoiseStdChange={setNoiseStd}
               onShowEyeChange={setShowEye}
+              onComparisonModeChange={setComparisonMode}
+              onEncoding2Change={setEncoding2}
               onRedraw={handleEncode}
               onRandomize={handleRandomize}
               onDownloadPNG={handleDownloadPNG}
@@ -211,20 +229,57 @@ const Index = () => {
 
           {/* Right Column: Visualization & Decode */}
           <div className="lg:col-span-2 space-y-6">
-            <div>
-              <h2 className="text-xl font-semibold mb-4">
-                {showEye ? 'Eye Diagram View' : 'Waveform Visualization'}
-              </h2>
-              <WaveCanvas
-                samples={samples}
-                samplesPerBit={samplesPerBit}
-                amplitudePx={80}
-                bitLabels={bits}
-                showEye={showEye}
-                width={1200}
-                height={400}
-              />
-            </div>
+            {comparisonMode ? (
+              <>
+                <div>
+                  <h2 className="text-xl font-semibold mb-2">Encoding Comparison</h2>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Comparing {encoding} vs {encoding2} with same input
+                  </p>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">{encoding}</h3>
+                      <WaveCanvas
+                        samples={samples}
+                        samplesPerBit={samplesPerBit}
+                        amplitudePx={80}
+                        bitLabels={bits}
+                        showEye={false}
+                        width={1200}
+                        height={300}
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-medium mb-2">{encoding2}</h3>
+                      <WaveCanvas
+                        samples={samples2}
+                        samplesPerBit={samplesPerBit}
+                        amplitudePx={80}
+                        bitLabels={bits}
+                        showEye={false}
+                        width={1200}
+                        height={300}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div>
+                <h2 className="text-xl font-semibold mb-4">
+                  {showEye ? 'Eye Diagram View' : 'Waveform Visualization'}
+                </h2>
+                <WaveCanvas
+                  samples={samples}
+                  samplesPerBit={samplesPerBit}
+                  amplitudePx={80}
+                  bitLabels={bits}
+                  showEye={showEye}
+                  width={1200}
+                  height={400}
+                />
+              </div>
+            )}
 
             <DecodePanel
               originalBits={bits}
