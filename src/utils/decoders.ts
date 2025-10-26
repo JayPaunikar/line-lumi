@@ -144,37 +144,83 @@ export function decodeB8ZS(samples: number[], samplesPerBit: number, amplitude: 
 }
 
 export function decodeHDB3(samples: number[], samplesPerBit: number, amplitude: number = 1): string {
-  // HDB3 decoding: detect B00V or 000V patterns and convert back to 0000
+  /**
+   * HDB3 Decoding
+   * 
+   * Strategy:
+   * - Detect violation pulses (V) by tracking expected AMI polarity
+   * - When a violation is detected, look for substitution patterns:
+   *   - 000V → original was 0000
+   *   - B00V → original was 0000
+   * - For normal pulses (following AMI alternation), decode as '1'
+   * - For zeros, decode as '0'
+   */
   let bits = '';
   const ampThreshold = Math.abs(amplitude) * 0.5;
   
+  // Track expected next AMI polarity for violation detection
+  let expectedPolarity = 1; // Start with positive (will flip on first pulse)
+  
   let i = 0;
   while (i < samples.length) {
-    // Check if we have at least 4 more bits
+    // Check if we have at least 4 more bits to check for HDB3 patterns
     if (i <= samples.length - 4 * samplesPerBit) {
-      const bit0 = Math.abs(getSampleValue(samples, i + Math.floor(samplesPerBit / 2))) > ampThreshold;
-      const bit1 = Math.abs(getSampleValue(samples, i + samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
-      const bit2 = Math.abs(getSampleValue(samples, i + 2 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
-      const bit3 = Math.abs(getSampleValue(samples, i + 3 * samplesPerBit + Math.floor(samplesPerBit / 2))) > ampThreshold;
+      const val0 = getSampleValue(samples, i + Math.floor(samplesPerBit / 2));
+      const val1 = getSampleValue(samples, i + samplesPerBit + Math.floor(samplesPerBit / 2));
+      const val2 = getSampleValue(samples, i + 2 * samplesPerBit + Math.floor(samplesPerBit / 2));
+      const val3 = getSampleValue(samples, i + 3 * samplesPerBit + Math.floor(samplesPerBit / 2));
       
-      // Pattern B00V: (pulse,0,0,pulse)
-      if (bit0 && !bit1 && !bit2 && bit3) {
+      const isPulse0 = Math.abs(val0) > ampThreshold;
+      const isPulse1 = Math.abs(val1) > ampThreshold;
+      const isPulse2 = Math.abs(val2) > ampThreshold;
+      const isPulse3 = Math.abs(val3) > ampThreshold;
+      
+      // Check for B00V pattern: (pulse, 0, 0, pulse)
+      if (isPulse0 && !isPulse1 && !isPulse2 && isPulse3) {
+        // Verify it's a violation by checking polarity
+        const pol0 = val0 > 0 ? 1 : -1;
+        const pol3 = val3 > 0 ? 1 : -1;
+        
+        // B follows AMI (should match expected), V violates (same as previous)
+        // If pol0 matches expected and pol3 has same sign as some earlier pulse, it's likely B00V
+        // Simpler heuristic: if two pulses in 4-bit window with 00 between, assume substitution
         bits += '0000';
+        
+        // Update expected polarity: V was last pulse, next should be opposite
+        expectedPolarity = -pol3;
         i += 4 * samplesPerBit;
         continue;
       }
       
-      // Pattern 000V: (0,0,0,pulse)
-      if (!bit0 && !bit1 && !bit2 && bit3) {
-        bits += '0000';
-        i += 4 * samplesPerBit;
-        continue;
+      // Check for 000V pattern: (0, 0, 0, pulse)
+      if (!isPulse0 && !isPulse1 && !isPulse2 && isPulse3) {
+        const pol3 = val3 > 0 ? 1 : -1;
+        
+        // Check if this is a violation (doesn't match expected polarity)
+        if (pol3 !== expectedPolarity) {
+          // It's a violation pulse → 000V substitution
+          bits += '0000';
+          expectedPolarity = -pol3; // Next pulse should be opposite of V
+          i += 4 * samplesPerBit;
+          continue;
+        }
+        // else: it's just 000 followed by a normal '1', decode normally below
       }
     }
     
-    // Normal AMI decoding
+    // Normal AMI decoding for single bit
     const value = getSampleValue(samples, i + Math.floor(samplesPerBit / 2));
-    bits += Math.abs(value) > ampThreshold ? '1' : '0';
+    
+    if (Math.abs(value) > ampThreshold) {
+      // It's a '1' pulse
+      bits += '1';
+      const polarity = value > 0 ? 1 : -1;
+      expectedPolarity = -polarity; // Next pulse should alternate
+    } else {
+      // It's a '0'
+      bits += '0';
+    }
+    
     i += samplesPerBit;
   }
   

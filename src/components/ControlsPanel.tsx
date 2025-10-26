@@ -32,6 +32,7 @@ interface ControlsPanelProps {
   onDownloadPNG: () => void;
   onReset: () => void;
   onBerTest: () => void;
+  onHDB3Test?: () => void;
 }
 
 export const ControlsPanel = ({
@@ -55,6 +56,7 @@ export const ControlsPanel = ({
   onDownloadPNG,
   onReset,
   onBerTest,
+  onHDB3Test,
 }: ControlsPanelProps) => {
   const handleBitsInput = (value: string) => {
     // Only allow 0s and 1s
@@ -246,17 +248,28 @@ export const ControlsPanel = ({
         </div>
       </div>
 
-      <div className="flex gap-2 pt-4 border-t border-border">
+      <div className="flex gap-2 pt-4 border-t border-border flex-wrap">
         <Button
           onClick={onBerTest}
           variant="secondary"
+          size="sm"
         >
           BER Test
         </Button>
+        {onHDB3Test && (
+          <Button
+            onClick={onHDB3Test}
+            variant="secondary"
+            size="sm"
+          >
+            HDB3 Test
+          </Button>
+        )}
         <Button
           onClick={onDownloadPNG}
           className="flex-1"
           variant="default"
+          size="sm"
         >
           <Download className="h-4 w-4 mr-2" />
           Download PNG
@@ -264,6 +277,7 @@ export const ControlsPanel = ({
         <Button
           onClick={onReset}
           variant="outline"
+          size="sm"
         >
           <RotateCcw className="h-4 w-4 mr-2" />
           Reset

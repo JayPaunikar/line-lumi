@@ -93,14 +93,14 @@ Bit:  1  0  0  0  0  0  0  0  0
   },
   HDB3: {
     title: "HDB3 (High-Density Bipolar-3 Zeros)",
-    description: "Similar to B8ZS but replaces four consecutive zeros. Uses 000V or B00V patterns based on polarity tracking. Widely used in E1 lines (European standard). Ensures no more than 3 consecutive zeros, improving clock recovery.",
+    description: "Replaces every 4 consecutive zeros with 000V (if even pulse count) or B00V (if odd pulse count). Tracks non-zero pulses since last substitution. V is a violation (same polarity as previous), B is a balancing pulse (follows AMI). Used in E1 lines. Example: '10000' with even count → '1' then '000V'.",
     diagram: `
-Bit:  1  0  0  0  0  1
-      ┌──┐B  0  0 ┌V┐┌──┐
-  +V  │  │         │ ││  │
-  ────┤  └─────────┤ │┤  ├──
-      │       ┌────┘ ││  │
-  -V  │       │      ││  │
+Bit:  1  0  0  0  0  1  0  0  0  0
+Even: ┌──┐ 0  0  0 ┌V┐┌──┐B  0  0 ┌V┐
+  +V  │  │         │ ││  │         │ │
+  ────┤  └─────────┤ │┤  └─────────┤ │
+      │            └─┘│       ┌────┘ │
+  -V  │               │       │      │
     `,
   },
 };

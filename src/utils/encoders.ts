@@ -136,45 +136,79 @@ export function encodeB8ZS(bits: string, samplesPerBit: number, amplitude: numbe
 }
 
 export function encodeHDB3(bits: string, samplesPerBit: number, amplitude: number = 1): number[] {
-  // HDB3: High-Density Bipolar-3 Zeros
-  // Replace 4 consecutive zeros with either 000V or B00V
+  /**
+   * HDB3: High-Density Bipolar-3 Zeros
+   * 
+   * Rules:
+   * - Replace every run of 4 consecutive zeros (0000) with either 000V or B00V
+   * - Maintain pulseCount: number of non-zero pulses since last substitution
+   * - Track lastNonZeroPolarity: polarity (+1 or -1) of last emitted non-zero pulse
+   * - Track nextPulsePolarity: next polarity for AMI alternation
+   * 
+   * Substitution rules:
+   * - If pulseCount is EVEN → 000V (V has same polarity as lastNonZeroPolarity)
+   * - If pulseCount is ODD → B00V (B follows AMI alternation, V has same polarity as lastNonZeroPolarity)
+   * 
+   * After substitution, reset pulseCount to 0 and update tracking variables.
+   */
   const samples: number[] = [];
-  let lastPulse = -amplitude; // Track last non-zero pulse
-  let pulseCount = 0; // Count pulses since last substitution
+  
+  // Polarity tracking: use +1/-1 normalized values
+  let nextPulsePolarity = 1;  // Next AMI pulse polarity (alternates)
+  let lastNonZeroPolarity = -1; // Polarity of last emitted non-zero pulse
+  let pulseCount = 0; // Number of non-zero pulses since last substitution
   
   let i = 0;
   while (i < bits.length) {
     // Check for 4 consecutive zeros
     if (i <= bits.length - 4 && bits.substring(i, i + 4) === '0000') {
-      const V = lastPulse; // Violation: same polarity as last pulse
-      const B = -lastPulse; // Bipolar: opposite polarity
-      
+      // Apply HDB3 substitution based on pulseCount
       if (pulseCount % 2 === 0) {
-        // Even number of pulses: use B00V
-        samples.push(...Array(samplesPerBit).fill(B));
-        samples.push(...Array(samplesPerBit).fill(0));
-        samples.push(...Array(samplesPerBit).fill(0));
-        samples.push(...Array(samplesPerBit).fill(V));
-        lastPulse = V;
-        pulseCount = 1; // Reset count (we just added B and V)
+        // EVEN pulseCount → 000V
+        // V (violation) has same polarity as lastNonZeroPolarity
+        const V = lastNonZeroPolarity * amplitude;
+        
+        samples.push(...Array(samplesPerBit).fill(0)); // 0
+        samples.push(...Array(samplesPerBit).fill(0)); // 0
+        samples.push(...Array(samplesPerBit).fill(0)); // 0
+        samples.push(...Array(samplesPerBit).fill(V)); // V
+        
+        // Update tracking: V becomes the last non-zero pulse
+        lastNonZeroPolarity = V > 0 ? 1 : -1;
+        // nextPulsePolarity should be opposite of V for next normal pulse
+        nextPulsePolarity = -lastNonZeroPolarity;
+        pulseCount = 0; // Reset pulse count
       } else {
-        // Odd number of pulses: use 000V
-        samples.push(...Array(samplesPerBit).fill(0));
-        samples.push(...Array(samplesPerBit).fill(0));
-        samples.push(...Array(samplesPerBit).fill(0));
-        samples.push(...Array(samplesPerBit).fill(V));
-        lastPulse = V;
-        pulseCount = 0; // Reset count
+        // ODD pulseCount → B00V
+        // B (balancing pulse) follows AMI alternation
+        // V (violation) has same polarity as lastNonZeroPolarity (before B)
+        const B = nextPulsePolarity * amplitude;
+        const V = lastNonZeroPolarity * amplitude;
+        
+        samples.push(...Array(samplesPerBit).fill(B)); // B
+        samples.push(...Array(samplesPerBit).fill(0)); // 0
+        samples.push(...Array(samplesPerBit).fill(0)); // 0
+        samples.push(...Array(samplesPerBit).fill(V)); // V
+        
+        // Update tracking: V becomes the last non-zero pulse
+        lastNonZeroPolarity = V > 0 ? 1 : -1;
+        // nextPulsePolarity should be opposite of V (since V was last)
+        nextPulsePolarity = -lastNonZeroPolarity;
+        pulseCount = 0; // Reset pulse count
       }
       i += 4;
     } else if (bits[i] === '1') {
-      // Normal AMI encoding for 1s
-      lastPulse = -lastPulse;
-      samples.push(...Array(samplesPerBit).fill(lastPulse));
-      pulseCount++;
+      // Normal AMI encoding for '1': alternate polarity
+      const pulse = nextPulsePolarity * amplitude;
+      samples.push(...Array(samplesPerBit).fill(pulse));
+      
+      // Update tracking
+      lastNonZeroPolarity = nextPulsePolarity;
+      nextPulsePolarity = -nextPulsePolarity; // Alternate for next pulse
+      pulseCount++; // Increment pulse count
       i++;
     } else {
-      // Single 0
+      // Single '0' (not part of 4-zero run)
       samples.push(...Array(samplesPerBit).fill(0));
       i++;
     }

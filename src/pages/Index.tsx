@@ -9,6 +9,7 @@ import { decode, findErrors } from '@/utils/decoders';
 import { addAwgn } from '@/utils/noise';
 import { toast } from '@/hooks/use-toast';
 import { Activity } from 'lucide-react';
+import { runHDB3Tests } from '@/utils/hdb3-test-runner';
 
 const Index = () => {
   const [bits, setBits] = useState('10110011');
@@ -177,6 +178,24 @@ const Index = () => {
     }
   };
 
+  const handleHDB3Test = () => {
+    try {
+      console.clear();
+      const result = runHDB3Tests();
+      toast({
+        title: "HDB3 Tests Complete",
+        description: `${result.passedTests}/${result.totalTests} tests passed. Check console for details.`,
+        variant: result.passedTests === result.totalTests ? "default" : "destructive"
+      });
+    } catch (error) {
+      toast({
+        title: "HDB3 Test failed",
+        description: "An error occurred while running HDB3 tests",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -222,6 +241,7 @@ const Index = () => {
               onDownloadPNG={handleDownloadPNG}
               onReset={handleReset}
               onBerTest={handleBerTest}
+              onHDB3Test={handleHDB3Test}
             />
             
             <ExplanationPanel encoding={encoding} />
